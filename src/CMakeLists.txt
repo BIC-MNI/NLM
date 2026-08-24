@@ -1,18 +1,23 @@
 ADD_EXECUTABLE( mincnlm
-                mincnlm.cpp 
+                mincnlm.cpp
                 nl_means.cpp
                 nl_means_block.cpp
                 nl_means_utils.cpp
                 nl_means.h
                 nl_means_block.h
-                nl_means_utils.h )
+                nl_means_utils.h
+                noise_estimate.cpp   noise_estimate.h
+                minc_histograms.cpp  minc_histograms.h
+                fftw_blur.cpp        fftw_blur.h
+                dwt.cpp
+                dwt_utils.cpp        dwt_utils.h  volume_dwt.h )
 
-TARGET_LINK_LIBRARIES( mincnlm minc_image_proc ${EZMINC_LIBRARIES} pthread  )
+TARGET_LINK_LIBRARIES( mincnlm ${EZMINC_LIBRARIES} ${GSL_LIBRARY} ${GSL_CBLAS_LIBRARY} ${FFTW3F_LIBRARY} pthread  )
 
 ADD_EXECUTABLE( minc_anlm
-                minc_anlm.cpp 
-                 )
-TARGET_LINK_LIBRARIES( minc_anlm minc_image_proc ${EZMINC_LIBRARIES} pthread  )
+                minc_anlm.cpp
+                minc_histograms.cpp minc_histograms.h )
+TARGET_LINK_LIBRARIES( minc_anlm ${EZMINC_LIBRARIES} pthread  )
 
 INSTALL(TARGETS 
         mincnlm minc_anlm
