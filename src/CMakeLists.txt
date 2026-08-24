@@ -22,7 +22,16 @@ ADD_EXECUTABLE( minc_anlm
                 minc_io_nifti_volume.h )
 TARGET_LINK_LIBRARIES( minc_anlm ${EZMINC_LIBRARIES} ${NIFTI_LIBRARY} ${ZNZ_LIBRARY} ${ZLIB_LIBRARY} pthread  )
 
-INSTALL(TARGETS 
-        mincnlm minc_anlm
+ADD_EXECUTABLE( noise_estimate
+                noise_estimate_tool.cpp
+                noise_estimate.cpp   noise_estimate.h
+                minc_histograms.cpp  minc_histograms.h
+                fftw_blur.cpp        fftw_blur.h
+                dwt.cpp
+                dwt_utils.cpp        dwt_utils.h  volume_dwt.h )
+TARGET_LINK_LIBRARIES( noise_estimate ${EZMINC_LIBRARIES} ${GSL_LIBRARY} ${GSL_CBLAS_LIBRARY} ${FFTW3F_LIBRARY} )
+
+INSTALL(TARGETS
+        mincnlm minc_anlm noise_estimate
         RUNTIME DESTINATION bin )
 
