@@ -53,6 +53,7 @@
 #include <minc_1_simple.h> // simple minc reading & writing
 #include <time_stamp.h>    // for creating minc style history entry
 #include <minc_1_simple_rw.h>
+#include "minc_io_nifti_volume.h" // direct NIfTI reading & writing, no MINC dependency
 #include "noise_estimate.h"
  
 #include <ParseArgv.h>
@@ -411,54 +412,83 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
 		fprintf(stderr, "%s: %s exists! (use -clobber to overwrite)\n\n", argv[0], out_file);
 		exit(EXIT_FAILURE);
 	}
+
+  bool nifti_in  = minc::is_nifti_filename(in_file);
+  bool nifti_out = minc::is_nifti_filename(out_file);
+  if(nifti_in != nifti_out)
+  {
+    fprintf(stderr, "%s: Mixing MINC and NIfTI between input and output is not supported;"
+                     " use nii2mnc/mnc2nii to convert first\n", argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  minc::minc_1_reader minc_reader;
+  nifti_image* nifti_header = NULL;
+
 	try {
-      
-		minc::minc_1_reader minc_reader;
-		minc_reader.open(in_file);
-     
-		/* read in the input file */
-     //in_ndims = get_minc_file_n_dimensions(in_file);
-     //set_default_minc_input_options(&in_ops);
 
+    if(nifti_in)
+    {
+      nifti_header = minc::load_nifti_simple_volume(in_file, in_vol, vol_res);
+      in_ndims = 3;
+      vol_size[0] = (int)in_vol.dim(0);
+      vol_size[1] = (int)in_vol.dim(1);
+      vol_size[2] = (int)in_vol.dim(2);
+    }
+    else
+    {
+      minc_reader.open(in_file);
 
-		if((in_ndims=minc_reader.dim_no()) != 3){
-			fprintf(stderr, "%s: Only 3D volume is supported for the moment\n", argv[0]);
-			return EXIT_FAILURE;
-		}
-     
-		vol_res[0] = VIO_ABS(minc_reader.nspacing(1));
-		vol_res[1] = VIO_ABS(minc_reader.nspacing(2));
-		vol_res[2] = VIO_ABS(minc_reader.nspacing(3));
-		vol_size[0] = minc_reader.ndim(1);
-		vol_size[1] = minc_reader.ndim(2);
-		vol_size[2] = minc_reader.ndim(3);
-    
-    
-		//in_vol_float =  new float[vol_size[0]*vol_size[1]*vol_size[2]];
-    
-		out_vol_float = new float[vol_size[0]*vol_size[1]*vol_size[2]];
-    
-    /*
-		minc_reader.setup_read_float();
-		minc::load_standard_volume<float>(minc_reader,in_vol_float);*/
-    minc::load_simple_volume(minc_reader,in_vol);
+      if((in_ndims=minc_reader.dim_no()) != 3){
+        fprintf(stderr, "%s: Only 3D volume is supported for the moment\n", argv[0]);
+        return EXIT_FAILURE;
+      }
+
+      vol_res[0] = VIO_ABS(minc_reader.nspacing(1));
+      vol_res[1] = VIO_ABS(minc_reader.nspacing(2));
+      vol_res[2] = VIO_ABS(minc_reader.nspacing(3));
+      vol_size[0] = minc_reader.ndim(1);
+      vol_size[1] = minc_reader.ndim(2);
+      vol_size[2] = minc_reader.ndim(3);
+
+      minc::load_simple_volume(minc_reader,in_vol);
+    }
+
+    out_vol_float = new float[vol_size[0]*vol_size[1]*vol_size[2]];
     in_vol_float=in_vol.c_buf();
-    
+
     if(hallucinate_file)
     {
-      minc::minc_1_reader h_reader;
-      h_reader.open(hallucinate_file);
-      for(int i=1;i<4;i++)
-        if(h_reader.ndim(i)!=minc_reader.ndim(i))
+      if(nifti_in)
+      {
+        minc::simple_volume<float> h_vol;
+        double h_res[3];
+        nifti_image* h_header = minc::load_nifti_simple_volume(hallucinate_file, h_vol, h_res);
+        if(h_vol.dim(0)!=in_vol.dim(0) || h_vol.dim(1)!=in_vol.dim(1) || h_vol.dim(2)!=in_vol.dim(2))
         {
           fprintf(stderr, "%s: Inconsistent dimension size of hallucination file\n", argv[0]);
           return EXIT_FAILURE;
         }
-      in_hallucinate=new float[vol_size[0]*vol_size[1]*vol_size[2]];
-      h_reader.setup_read_float();
-      minc::load_standard_volume<float>(h_reader,in_hallucinate);
+        in_hallucinate=new float[vol_size[0]*vol_size[1]*vol_size[2]];
+        memcpy(in_hallucinate, h_vol.c_buf(), sizeof(float)*vol_size[0]*vol_size[1]*vol_size[2]);
+        nifti_image_free(h_header);
+      }
+      else
+      {
+        minc::minc_1_reader h_reader;
+        h_reader.open(hallucinate_file);
+        for(int i=1;i<4;i++)
+          if(h_reader.ndim(i)!=minc_reader.ndim(i))
+          {
+            fprintf(stderr, "%s: Inconsistent dimension size of hallucination file\n", argv[0]);
+            return EXIT_FAILURE;
+          }
+        in_hallucinate=new float[vol_size[0]*vol_size[1]*vol_size[2]];
+        h_reader.setup_read_float();
+        minc::load_standard_volume<float>(h_reader,in_hallucinate);
+      }
     }
-    
+
 		min_value=1e10;
 		max_value=-1e10;
     //calculate min & max values
@@ -548,18 +578,28 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     
 
 
-		minc::minc_1_writer minc_writer;
-		minc_writer.open(out_file,minc_reader.info(),2,minc_reader.datatype());
-		minc_writer.copy_headers(minc_reader);
-		minc_writer.append_history(history);
-      
-		minc_writer.setup_write_float();
-		minc::save_standard_volume<float>(minc_writer,out_vol_float);
-      
-        
+    if(nifti_out)
+    {
+      minc::simple_volume<float> out_vol;
+      out_vol.resize(vol_size[0],vol_size[1],vol_size[2]);
+      memcpy(out_vol.c_buf(), out_vol_float, sizeof(float)*vol_size[0]*vol_size[1]*vol_size[2]);
+      minc::save_nifti_simple_volume(out_file, out_vol, nifti_header);
+    }
+    else
+    {
+      minc::minc_1_writer minc_writer;
+      minc_writer.open(out_file,minc_reader.info(),2,minc_reader.datatype());
+      minc_writer.copy_headers(minc_reader);
+      minc_writer.append_history(history);
+
+      minc_writer.setup_write_float();
+      minc::save_standard_volume<float>(minc_writer,out_vol_float);
+    }
+
 		//delete [] in_vol_float;
 		delete [] out_vol_float;
-		
+    if(nifti_header) nifti_image_free(nifti_header);
+
 	} catch (const minc::generic_error & err) {
 		std::cerr << "Got an error at:" << err.file () << ":" << err.line () << std::endl;
 		std::cerr << err.msg()<<std::endl;

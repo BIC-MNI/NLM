@@ -14,6 +14,7 @@
 #include <minc_io_simple_volume.h>
 #include <minc_1_simple.h>
 #include <minc_1_simple_rw.h>
+#include "minc_io_nifti_volume.h" // direct NIfTI reading & writing, no MINC dependency
 #include "minc_histograms.h"
 #include <time_stamp.h>    // for creating minc style history entry
 #include <math.h>
@@ -203,57 +204,95 @@ int main(int argc,char **argv)
   //std::string output_f=output_prefix+"_denoised.mnc";
   std::string output_f=output_prefix;
   
-  std::string output_distance=output_prefix+"_distance.mnc";
-  std::string output_variances=output_prefix+"_variances.mnc";
-  std::string output_means=output_prefix+"_means.mnc";
-  std::string output_counts=output_prefix+"_counts.mnc";
-  
-  
+  bool nifti_in  = is_nifti_filename(input_src_f);
+  bool nifti_out = is_nifti_filename(output_f);
+  if(nifti_in != nifti_out)
+  {
+    std::cerr << "Mixing MINC and NIfTI between input and output is not supported;"
+                  " use nii2mnc/mnc2nii to convert first" << std::endl;
+    return 1;
+  }
+
+  std::string output_distance=output_prefix+(nifti_out?"_distance.nii.gz":"_distance.mnc");
+  std::string output_variances=output_prefix+(nifti_out?"_variances.nii.gz":"_variances.mnc");
+  std::string output_means=output_prefix+(nifti_out?"_means.nii.gz":"_means.mnc");
+  std::string output_counts=output_prefix+(nifti_out?"_counts.nii.gz":"_counts.mnc");
+
+
   if (!clobber && !access(output_f.c_str(), F_OK))
   {
     std::cerr << output_f.c_str () << " Exists!" << std::endl;
     return 1;
-  }  
- 
+  }
+
   try
   {
     simple_volume<double> src;
-    
+
     minc_1_reader rdr1;
-    rdr1.open(input_src_f.c_str());
-    load_simple_volume<double>(rdr1,src);
-    
-    nc_type store_datatype= store_double?NC_DOUBLE:store_float?NC_FLOAT:store_short?NC_SHORT:store_byte?NC_BYTE:rdr1.datatype();
-		
+    nifti_image* nifti_header = NULL;
+    nc_type store_datatype = NC_FLOAT;
+    int nifti_store_datatype = 0; // 0 = keep same datatype as input
+
+    if(nifti_in)
+    {
+      double vol_res[3];
+      nifti_header = load_nifti_simple_volume<double>(input_src_f, src, vol_res);
+      nifti_store_datatype = store_double?DT_FLOAT64:store_float?DT_FLOAT32:store_short?DT_INT16:store_byte?DT_UINT8:0;
+    }
+    else
+    {
+      rdr1.open(input_src_f.c_str());
+      load_simple_volume<double>(rdr1,src);
+      store_datatype= store_double?NC_DOUBLE:store_float?NC_FLOAT:store_short?NC_SHORT:store_byte?NC_BYTE:rdr1.datatype();
+    }
+
     if(debug)
       std::cout<<"Image dimensions:"<<src.dim(0)<<","<<src.dim(1)<<","<<src.dim(2)<<std::endl;
-		
+
     anlm_proc anlm(src,search_radius,patch_radius,rician,beta,debug>0);
-    
+
     anlm.exec(threads);
     std::cout<<"Done..."<<std::endl;
-    
-    minc_1_writer wrt;
-    wrt.open(output_f.c_str(),rdr1.info(),2,store_datatype);
-    wrt.append_history(history);
-    save_simple_volume<double>(wrt,anlm.fima);
-    
+
+    if(nifti_out)
+    {
+      save_nifti_simple_volume<double>(output_f, anlm.fima, nifti_header, nifti_store_datatype);
+    }
+    else
+    {
+      minc_1_writer wrt;
+      wrt.open(output_f.c_str(),rdr1.info(),2,store_datatype);
+      wrt.append_history(history);
+      save_simple_volume<double>(wrt,anlm.fima);
+    }
+
     if(debug)
     {
       std::cerr<<"Outputting debug information..."<<std::endl;
-      
-      minc_1_writer wrt2;
-      wrt2.open(output_distance.c_str(),rdr1.info(),2,store_datatype);
-      wrt2.append_history(history);
-      save_simple_volume<double>(wrt2,anlm.distances);
-      
-      
-      minc_1_writer wrt3;
-      wrt3.open(output_counts.c_str(),rdr1.info(),2,store_datatype);
-      wrt3.append_history(history);
-      save_simple_volume<int>(wrt3,anlm.Label);
+
+      if(nifti_out)
+      {
+        save_nifti_simple_volume<double>(output_distance, anlm.distances, nifti_header, nifti_store_datatype);
+        save_nifti_simple_volume<int>(output_counts, anlm.Label, nifti_header, DT_INT32, /*no_rescale=*/true);
+      }
+      else
+      {
+        minc_1_writer wrt2;
+        wrt2.open(output_distance.c_str(),rdr1.info(),2,store_datatype);
+        wrt2.append_history(history);
+        save_simple_volume<double>(wrt2,anlm.distances);
+
+
+        minc_1_writer wrt3;
+        wrt3.open(output_counts.c_str(),rdr1.info(),2,store_datatype);
+        wrt3.append_history(history);
+        save_simple_volume<int>(wrt3,anlm.Label);
+      }
     }
-    
+
+    if(nifti_header) nifti_image_free(nifti_header);
+
     return 0;
   } catch (const minc::generic_error & err) {
     std::cerr << "Got an error at:" << err.file () << ":" << err.line () << std::endl;
