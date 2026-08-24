@@ -8,11 +8,32 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 IF(NOT MINC_TOOLKIT_BUILD)
   SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules")
 
-  FIND_PACKAGE(LIBMINC REQUIRED)
-  INCLUDE( ${LIBMINC_USE_FILE} )
+  OPTION(NLM_USE_MINC "Build with MINC (.mnc) I/O support if available" ON)
+
+  IF(NLM_USE_MINC)
+    FIND_PACKAGE(LIBMINC QUIET)
+  ENDIF(NLM_USE_MINC)
+
+  IF(LIBMINC_FOUND AND NLM_USE_MINC)
+    INCLUDE( ${LIBMINC_USE_FILE} )
+    SET(HAVE_MINC1 ON)
+  ELSE()
+    SET(HAVE_MINC1 OFF)
+    MESSAGE(STATUS "NLM: building NIfTI-only (MINC not found or disabled via NLM_USE_MINC=OFF)")
+  ENDIF()
+
   FIND_PACKAGE(GSL REQUIRED)
   FIND_PACKAGE(FFTW3F REQUIRED)
   FIND_PACKAGE(NIFTI REQUIRED)
+  FIND_PACKAGE(ZLIB REQUIRED)
+  SET(ZLIB_LIBRARY ${ZLIB_LIBRARIES})
+
+  # The pure, MINC-independent volume container (minc_io_simple_volume.h et al.)
+  # lives alongside libminc's sources; use it directly when this checkout has
+  # the sibling libminc submodule, without requiring MINC to be built/found.
+  IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
+    INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
+  ENDIF()
 
   ENABLE_TESTING()
   INCLUDE(CTest)

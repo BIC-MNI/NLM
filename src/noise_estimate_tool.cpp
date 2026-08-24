@@ -1,8 +1,11 @@
 #include <iostream>
 #include <getopt.h>
 #include <minc_io_simple_volume.h>
+#ifdef HAVE_MINC1
 #include <minc_1_simple.h>
 #include <minc_1_simple_rw.h>
+#endif //HAVE_MINC1
+#include "minc_io_nifti_volume.h" // direct NIfTI reading & writing, no MINC dependency
 #include <stdlib.h>
 #include "noise_estimate.h"
 
@@ -97,38 +100,81 @@ int main(int argc,char **argv)
   {
     simple_volume<float> input;
     minc_byte_volume  input_mask;
-    
-    minc_1_reader rdr;
-    rdr.open(input_f.c_str());
-    load_simple_volume<float>(rdr,input);
-    
-    if(!input_mask_f.empty())
+
+    bool nifti_in = is_nifti_filename(input_f);
+
+    if(nifti_in)
     {
-      minc_1_reader rdr2;
-      rdr2.open(input_mask_f.c_str());
-      
-      for(int i=0;i<3;i++)
+      double vol_res[3];
+      nifti_image* nifti_header = load_nifti_simple_volume<float>(input_f, input, vol_res);
+      nifti_image_free(nifti_header);
+
+      if(!input_mask_f.empty())
       {
-        if(rdr.ndim(i)!=rdr2.ndim(i))
+        if(!is_nifti_filename(input_mask_f))
         {
-          std::cerr<<"Mask has Different dimensions length! "<<std::endl;
+          std::cerr<<"Mixing MINC and NIfTI between input and mask is not supported;"
+                     " use nii2mnc/mnc2nii to convert first"<<std::endl;
           return 1;
         }
-      }
-      
-      for(int i=0;i<5;i++)
-      {
-        if(rdr.nspacing(i)!=rdr2.nspacing(i) )
+        double mask_res[3];
+        nifti_image* mask_header = load_nifti_simple_volume<unsigned char>(input_mask_f, input_mask, mask_res);
+        nifti_image_free(mask_header);
+
+        for(int i=0;i<3;i++)
         {
-          std::cerr<<"Mask has Different step size! "<<std::endl;
-          return 1;
+          if(input.dim(i)!=input_mask.dim(i))
+          {
+            std::cerr<<"Mask has Different dimensions length! "<<std::endl;
+            return 1;
+          }
         }
       }
-      load_simple_volume<unsigned char>(rdr2,input_mask);
-      
-      
     }
-    
+    else
+    {
+#ifdef HAVE_MINC1
+      minc_1_reader rdr;
+      rdr.open(input_f.c_str());
+      load_simple_volume<float>(rdr,input);
+
+      if(!input_mask_f.empty())
+      {
+        if(is_nifti_filename(input_mask_f))
+        {
+          std::cerr<<"Mixing MINC and NIfTI between input and mask is not supported;"
+                     " use nii2mnc/mnc2nii to convert first"<<std::endl;
+          return 1;
+        }
+        minc_1_reader rdr2;
+        rdr2.open(input_mask_f.c_str());
+
+        for(int i=0;i<3;i++)
+        {
+          if(rdr.ndim(i)!=rdr2.ndim(i))
+          {
+            std::cerr<<"Mask has Different dimensions length! "<<std::endl;
+            return 1;
+          }
+        }
+
+        for(int i=0;i<5;i++)
+        {
+          if(rdr.nspacing(i)!=rdr2.nspacing(i) )
+          {
+            std::cerr<<"Mask has Different step size! "<<std::endl;
+            return 1;
+          }
+        }
+        load_simple_volume<unsigned char>(rdr2,input_mask);
+      }
+#else
+      std::cerr << "this build has no MINC support; only .nii/.nii.gz files are"
+                    " supported. Rebuild with MINC available to use .mnc files." << std::endl;
+      return 1;
+#endif //HAVE_MINC1
+    }
+
     double mean_signal=0.0;
     
     double nsig_corr=noise_estimate(input,mean_signal,gaussian_noise,verbose,hist_bins,input_mask);

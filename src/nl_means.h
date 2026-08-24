@@ -1,10 +1,17 @@
 #ifndef NL_MEANS_H
 #define NL_MEANS_H
 
-#include <iostream> 
+#include <iostream>
 #include <iomanip>
 #include <pthread.h>
-#include <volume_io.h>
+#include <cmath>
+
+#ifndef MAX
+#define MAX( x, y )  ( ((x) >= (y)) ? (x) : (y) )
+#endif
+#ifndef MIN
+#define MIN( x, y )  ( ((x) <= (y)) ? (x) : (y) )
+#endif
 
 extern int testmean,testvar, nb_thread, block;
 

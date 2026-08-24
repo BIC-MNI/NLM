@@ -49,22 +49,24 @@
 #include <float.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <getopt.h>
 
+#ifdef HAVE_MINC1
 #include <minc_1_simple.h> // simple minc reading & writing
 #include <time_stamp.h>    // for creating minc style history entry
 #include <minc_1_simple_rw.h>
+#include <ParseArgv.h>
+#endif //HAVE_MINC1
 #include "minc_io_nifti_volume.h" // direct NIfTI reading & writing, no MINC dependency
 #include "noise_estimate.h"
- 
-#include <ParseArgv.h>
 
 #include "nl_means_utils.h"
 #include "nl_means_block.h"
 
 using namespace std;
 
-int      verbose = FALSE;
-int      clobber = FALSE;
+int      verbose = 0;
+int      clobber = 0;
 
 double filtering_param   = 0;
 double beta    = 1;
@@ -85,10 +87,11 @@ double v_min   = 0.5; //threshold for var test
 int weight_method = 0;
 int block      = 1;
 int b_space    = 2;
-int debug      = FALSE;
-int references = FALSE;
+int debug      = 0;
+int references = 0;
 char *hallucinate_file = NULL;
 
+#ifdef HAVE_MINC1
 static ArgvInfo argTable[] =
 {
 	{NULL, ARGV_HELP, NULL, NULL,(char*)"###########################################################################"},
@@ -124,6 +127,7 @@ static ArgvInfo argTable[] =
 	{NULL, ARGV_END, NULL, NULL, (char*)"       "},
 	{NULL, ARGV_END, NULL, NULL, NULL}
 };
+#endif //HAVE_MINC1
 
 void print_references(void) 
 {
@@ -164,7 +168,7 @@ void print_references(void)
 }
 
 // Function to perform preprocessing and call the denoising function
-void Exec(minc::simple_volume<float> & in, float *ima_out, int* vol_size, VIO_Real * vol_res, float *hallucinate_in)
+void Exec(minc::simple_volume<float> & in, float *ima_out, int* vol_size, double * vol_res, float *hallucinate_in)
 {
   float *ima_in=in.c_buf();
 
@@ -363,16 +367,13 @@ int main(int argc, char *argv[])
 	char    *in_file;
 	char    *out_file;
 	int      c, in_ndims;
-	float     min, max;
-	VIO_Status status = VIO_ERROR;
-	nc_type  datatype;
-	VIO_BOOL  signed_flag;
-	minc_input_options in_ops;
-	VIO_Real     min_value, max_value;
+	double     min_value, max_value;
 	int vol_size[3] = {0, 0, 0}; /* size */
-	VIO_Real vol_res[3] = {0.0, 0.0, 0.0};  /* resolutions */
+	double vol_res[3] = {0.0, 0.0, 0.0};  /* resolutions */
   
+#ifdef HAVE_MINC1
 	char *history = time_stamp(argc, argv); //maybe we should free it afterwards
+#endif //HAVE_MINC1
 
   std::cout<<"\
 ###########################################################################\n\
@@ -390,6 +391,7 @@ The original implementation was protected under the licence: \n\
 IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
   
 	/* get args */
+#ifdef HAVE_MINC1
 	if(ParseArgv(&argc, argv, argTable, 0) || (argc < 2))
 	{
 		fprintf(stderr,"\nUsage: %s [<options>] <infile.mnc> <outfile.mnc>\n", argv[0]);
@@ -397,7 +399,68 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     if(references) print_references();
 		exit(EXIT_FAILURE);
 	}
-  
+#else
+  {
+    static struct option long_options[] =
+    {
+      {"sigma",       required_argument, 0, 1},
+      {"beta",        required_argument, 0, 2},
+      {"v",           required_argument, 0, 3},
+      {"d",           required_argument, 0, 4},
+      {"w",           required_argument, 0, 5},
+      {"aniso",       no_argument,       0, 6},
+      {"block",       required_argument, 0, 7},
+      {"b_space",     required_argument, 0, 8},
+      {"m_min",       required_argument, 0, 9},
+      {"v_min",       required_argument, 0, 10},
+      {"mt",          required_argument, 0, 11},
+      {"hallucinate", required_argument, 0, 12},
+      {"verbose",     no_argument,       0, 13},
+      {"debug",       no_argument,       0, 14},
+      {"clobber",     no_argument,       0, 15},
+      {"references",  no_argument,       0, 16},
+      {"help",        no_argument,       0, 17},
+      {0, 0, 0, 0}
+    };
+    int opt_c;
+    while((opt_c = getopt_long_only(argc, argv, "", long_options, NULL)) != -1)
+    {
+      switch(opt_c)
+      {
+        case 1:  filtering_param = atof(optarg); break;
+        case 2:  beta = atof(optarg); break;
+        case 3:  S = atof(optarg); break;
+        case 4:  M = atof(optarg); break;
+        case 5:  weight_method = atoi(optarg); break;
+        case 6:  anisotropic = 1; break;
+        case 7:  block = atoi(optarg); break;
+        case 8:  b_space = atoi(optarg); break;
+        case 9:  m_min = atof(optarg); break;
+        case 10: v_min = atof(optarg); break;
+        case 11: nb_thread = atoi(optarg); break;
+        case 12: hallucinate_file = optarg; break;
+        case 13: verbose = 1; break;
+        case 14: debug = 1; break;
+        case 15: clobber = 1; break;
+        case 16: references = 1; break;
+        case 17:
+        default:
+          fprintf(stderr,"\nUsage: %s [<options>] <infile.nii[.gz]> <outfile.nii[.gz]>\n", argv[0]);
+          if(references) print_references();
+          exit(EXIT_FAILURE);
+      }
+    }
+    if((argc - optind) < 2)
+    {
+      fprintf(stderr,"\nUsage: %s [<options>] <infile.nii[.gz]> <outfile.nii[.gz]>\n", argv[0]);
+      if(references) print_references();
+      exit(EXIT_FAILURE);
+    }
+    argv[1] = argv[optind];
+    argv[2] = argv[optind+1];
+  }
+#endif //HAVE_MINC1
+
   if(references) print_references();
 
 	in_file = argv[1];
@@ -422,7 +485,9 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     return EXIT_FAILURE;
   }
 
+#ifdef HAVE_MINC1
   minc::minc_1_reader minc_reader;
+#endif //HAVE_MINC1
   nifti_image* nifti_header = NULL;
 
 	try {
@@ -437,6 +502,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     }
     else
     {
+#ifdef HAVE_MINC1
       minc_reader.open(in_file);
 
       if((in_ndims=minc_reader.dim_no()) != 3){
@@ -444,14 +510,19 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
         return EXIT_FAILURE;
       }
 
-      vol_res[0] = VIO_ABS(minc_reader.nspacing(1));
-      vol_res[1] = VIO_ABS(minc_reader.nspacing(2));
-      vol_res[2] = VIO_ABS(minc_reader.nspacing(3));
+      vol_res[0] = fabs(minc_reader.nspacing(1));
+      vol_res[1] = fabs(minc_reader.nspacing(2));
+      vol_res[2] = fabs(minc_reader.nspacing(3));
       vol_size[0] = minc_reader.ndim(1);
       vol_size[1] = minc_reader.ndim(2);
       vol_size[2] = minc_reader.ndim(3);
 
       minc::load_simple_volume(minc_reader,in_vol);
+#else
+      fprintf(stderr, "%s: this build has no MINC support; only .nii/.nii.gz files"
+                       " are supported. Rebuild with MINC available to use .mnc files.\n", argv[0]);
+      return EXIT_FAILURE;
+#endif //HAVE_MINC1
     }
 
     out_vol_float = new float[vol_size[0]*vol_size[1]*vol_size[2]];
@@ -475,6 +546,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
       }
       else
       {
+#ifdef HAVE_MINC1
         minc::minc_1_reader h_reader;
         h_reader.open(hallucinate_file);
         for(int i=1;i<4;i++)
@@ -486,6 +558,11 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
         in_hallucinate=new float[vol_size[0]*vol_size[1]*vol_size[2]];
         h_reader.setup_read_float();
         minc::load_standard_volume<float>(h_reader,in_hallucinate);
+#else
+        fprintf(stderr, "%s: this build has no MINC support; only .nii/.nii.gz files"
+                         " are supported. Rebuild with MINC available to use .mnc files.\n", argv[0]);
+        return EXIT_FAILURE;
+#endif //HAVE_MINC1
       }
     }
 
@@ -587,6 +664,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     }
     else
     {
+#ifdef HAVE_MINC1
       minc::minc_1_writer minc_writer;
       minc_writer.open(out_file,minc_reader.info(),2,minc_reader.datatype());
       minc_writer.copy_headers(minc_reader);
@@ -594,6 +672,11 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
 
       minc_writer.setup_write_float();
       minc::save_standard_volume<float>(minc_writer,out_vol_float);
+#else
+      fprintf(stderr, "%s: this build has no MINC support; only .nii/.nii.gz files"
+                       " are supported. Rebuild with MINC available to use .mnc files.\n", argv[0]);
+      return EXIT_FAILURE;
+#endif //HAVE_MINC1
     }
 
 		//delete [] in_vol_float;
