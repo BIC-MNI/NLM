@@ -82,16 +82,19 @@ int main(int argc,char **argv)
     {"beta",    required_argument,  0, 'b'},
     {"search",  required_argument,  0, 's'},
     {"patch",    required_argument, 0, 'p'},
+    {"help",    no_argument,        0, 'h'},
     {0, 0, 0, 0}
   };
-  
+
   int c;
   for (;;)
   {
     /* getopt_long stores the option index here. */
     int option_index = 0;
 
-    c = getopt_long (argc, argv, "t:b:s:p:", long_options, &option_index);
+    /* getopt_long_only (not getopt_long) so a single-dash "-help" is accepted
+       too, matching mincnlm's convention. */
+    c = getopt_long_only (argc, argv, "t:b:s:p:h", long_options, &option_index);
 
     /* Detect the end of the options. */
     if (c == -1)
@@ -103,7 +106,7 @@ int main(int argc,char **argv)
         break;
       case 't':
         threads=atoi(optarg);
-        if(threads<1) 
+        if(threads<1)
         {
           std::cerr<<"Warning! Number of threads should be >= 1!"<<std::endl;
           threads=1;
@@ -118,8 +121,11 @@ int main(int argc,char **argv)
       case 'p':
         patch_radius=atoi(optarg);
         break;
+      case 'h':
+        show_usage(argv[0]);
+        return 0;
       case '?':
-        /* getopt_long already printed an error message. */
+        /* getopt_long_only already printed an error message. */
       default:
         show_usage(argv[0]);
         return 1;

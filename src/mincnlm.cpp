@@ -127,9 +127,40 @@ static ArgvInfo argTable[] =
 	{NULL, ARGV_END, NULL, NULL, (char*)"       "},
 	{NULL, ARGV_END, NULL, NULL, NULL}
 };
+#else
+// Mirrors the option documentation ParseArgv/argTable auto-generates above,
+// for the no-MINC build (which parses arguments with getopt_long_only instead).
+void show_usage(const char *name)
+{
+  std::cerr
+      << "\nUsage: " << name << " [<options>] <infile.nii[.gz]> <outfile.nii[.gz]>\n"
+      << "       " << name << " [-help]\n\n"
+      << "---------------------------------PARAMETERS--------------------------------\n"
+      << "\t-sigma <f>     Sigma Value                       [0 = Automatic [default]]\n"
+      << "\t-beta <f>      Beta Value                        [default 1]\n"
+      << "\t-v <f>         Neighboring size : 1 = 26 neighbors [default], 2 = 124 neighbors ...\n"
+      << "\t-d <f>         Search Volume size                [default 5 : 1331 neighbors]\n"
+      << "\t-w <n>         Weighting method : 0 = L2-norm (Gaussian noise) [default],\n"
+      << "\t               1 = Pearson Divergence (Speckle), 2 = L2-norm + Bias correction (Rician noise)\n"
+      << "\t-aniso         The neighborhood size is adapted on the anisotropy of the image,\n"
+      << "\t               else the neighborhood is cubic\n"
+      << "----------------------------------OPTIONS----------------------------------\n"
+      << "\t-block <n>     NL-means based on block approach  [default 1]\n"
+      << "\t-b_space <n>   Distance between blocks           [default 2]\n"
+      << "\t-m_min <f>     Lowest bound of mean ratio        [default 0.95]\n"
+      << "\t-v_min <f>     Lowest bound of variance ratio    [default 0.5]\n"
+      << "\t-mt <n>        Number of threads                 [default 4]\n"
+      << "\t-hallucinate <file>  Hallucinate this file (experimental).\n"
+      << "-----------------------------------------------------------------------------\n"
+      << "\t-verbose       Print out extra information.\n"
+      << "\t-debug         Print out even more information.\n"
+      << "\t-clobber       Clobber existing files.\n"
+      << "\t-references    Print citation references.\n"
+      << "\t-help          Print this usage message.\n";
+}
 #endif //HAVE_MINC1
 
-void print_references(void) 
+void print_references(void)
 {
  std::cout<<"\
  \
@@ -423,7 +454,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
       {0, 0, 0, 0}
     };
     int opt_c;
-    while((opt_c = getopt_long_only(argc, argv, "", long_options, NULL)) != -1)
+    while((opt_c = getopt_long_only(argc, argv, "h", long_options, NULL)) != -1)
     {
       switch(opt_c)
       {
@@ -444,15 +475,19 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
         case 15: clobber = 1; break;
         case 16: references = 1; break;
         case 17:
+        case 'h':
+          show_usage(argv[0]);
+          if(references) print_references();
+          exit(EXIT_SUCCESS);
         default:
-          fprintf(stderr,"\nUsage: %s [<options>] <infile.nii[.gz]> <outfile.nii[.gz]>\n", argv[0]);
+          show_usage(argv[0]);
           if(references) print_references();
           exit(EXIT_FAILURE);
       }
     }
     if((argc - optind) < 2)
     {
-      fprintf(stderr,"\nUsage: %s [<options>] <infile.nii[.gz]> <outfile.nii[.gz]>\n", argv[0]);
+      show_usage(argv[0]);
       if(references) print_references();
       exit(EXIT_FAILURE);
     }

@@ -54,16 +54,19 @@ int main(int argc,char **argv)
     {"gauss",   no_argument, &gaussian_noise, 1},
     {"bins",   required_argument, 0, 'b'},
     {"mask",   required_argument, 0, 'm'},
+    {"help",   no_argument,       0, 'h'},
     {0, 0, 0, 0}
   };
-  
+
   int c;
   for (;;)
   {
     /* getopt_long stores the option index here. */
     int option_index = 0;
 
-    c = getopt_long (argc, argv, "m:b:", long_options, &option_index);
+    /* getopt_long_only (not getopt_long) so a single-dash "-help" is accepted
+       too, matching mincnlm's convention. */
+    c = getopt_long_only (argc, argv, "m:b:h", long_options, &option_index);
 
     /* Detect the end of the options. */
     if (c == -1)
@@ -79,8 +82,11 @@ int main(int argc,char **argv)
       case 'm':
         input_mask_f=optarg;
         break;
+      case 'h':
+        show_usage(argv[0]);
+        return 0;
       case '?':
-        /* getopt_long already printed an error message. */
+        /* getopt_long_only already printed an error message. */
       default:
         show_usage(argv[0]);
         return 1;
