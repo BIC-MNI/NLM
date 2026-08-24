@@ -22,11 +22,43 @@ IF(NOT MINC_TOOLKIT_BUILD)
     MESSAGE(STATUS "NLM: building NIfTI-only (MINC not found or disabled via NLM_USE_MINC=OFF)")
   ENDIF()
 
-  FIND_PACKAGE(GSL REQUIRED)
-  FIND_PACKAGE(FFTW3F REQUIRED)
-  FIND_PACKAGE(NIFTI REQUIRED)
-  FIND_PACKAGE(ZLIB REQUIRED)
-  SET(ZLIB_LIBRARY ${ZLIB_LIBRARIES})
+  OPTION(NLM_USE_SYSTEM_ZLIB   "Use system-installed ZLIB instead of downloading+building a static copy"   OFF)
+  OPTION(NLM_USE_SYSTEM_GSL    "Use system-installed GSL instead of downloading+building a static copy"    OFF)
+  OPTION(NLM_USE_SYSTEM_FFTW3F "Use system-installed FFTW3F instead of downloading+building a static copy" OFF)
+  OPTION(NLM_USE_SYSTEM_NIFTI  "Use system-installed NIFTI instead of downloading+building a static copy"  OFF)
+
+  INCLUDE(ExternalProject)
+
+  # ZLIB is resolved first (system or built) since build_nifti() below needs
+  # ZLIB_INCLUDE_DIR/ZLIB_LIBRARY already set, whichever source they came from.
+  IF(NLM_USE_SYSTEM_ZLIB)
+    FIND_PACKAGE(ZLIB REQUIRED)
+    SET(ZLIB_LIBRARY ${ZLIB_LIBRARIES})
+  ELSE()
+    INCLUDE(BuildZLIB)
+    build_zlib(${CMAKE_BINARY_DIR}/nlm-deps/install)
+  ENDIF()
+
+  IF(NLM_USE_SYSTEM_GSL)
+    FIND_PACKAGE(GSL REQUIRED)
+  ELSE()
+    INCLUDE(BuildGSL)
+    build_gsl(${CMAKE_BINARY_DIR}/nlm-deps/install)
+  ENDIF()
+
+  IF(NLM_USE_SYSTEM_FFTW3F)
+    FIND_PACKAGE(FFTW3F REQUIRED)
+  ELSE()
+    INCLUDE(BuildFFTW3F)
+    build_fftw3f(${CMAKE_BINARY_DIR}/nlm-deps/install)
+  ENDIF()
+
+  IF(NLM_USE_SYSTEM_NIFTI)
+    FIND_PACKAGE(NIFTI REQUIRED)
+  ELSE()
+    INCLUDE(BuildNIFTI)
+    build_nifti(${CMAKE_BINARY_DIR}/nlm-deps/install)
+  ENDIF()
 
   # The pure, MINC-independent volume container (minc_io_simple_volume.h et al.)
   # lives alongside libminc's sources; use it directly when this checkout has

@@ -49,3 +49,29 @@ INSTALL(TARGETS
         mincnlm minc_anlm noise_estimate
         RUNTIME DESTINATION bin )
 
+# When NLM built its own copies of these libraries (standalone,
+# NLM_USE_SYSTEM_*=OFF, the default), they're ExternalProject targets that build at
+# *build time* -- order the executables after them explicitly. Inside the superbuild
+# GSL/FFTW3F/NIFTI/ZLIB are already-resolved path variables, not targets by these
+# names in this scope, so this must not run there.
+IF(NOT MINC_TOOLKIT_BUILD)
+  IF(NOT NLM_USE_SYSTEM_ZLIB)
+    ADD_DEPENDENCIES(mincnlm ZLIB)
+    ADD_DEPENDENCIES(minc_anlm ZLIB)
+    ADD_DEPENDENCIES(noise_estimate ZLIB)
+  ENDIF()
+  IF(NOT NLM_USE_SYSTEM_GSL)
+    ADD_DEPENDENCIES(mincnlm GSL)
+    ADD_DEPENDENCIES(noise_estimate GSL)
+  ENDIF()
+  IF(NOT NLM_USE_SYSTEM_FFTW3F)
+    ADD_DEPENDENCIES(mincnlm FFTW3F)
+    ADD_DEPENDENCIES(noise_estimate FFTW3F)
+  ENDIF()
+  IF(NOT NLM_USE_SYSTEM_NIFTI)
+    ADD_DEPENDENCIES(mincnlm NIFTI)
+    ADD_DEPENDENCIES(minc_anlm NIFTI)
+    ADD_DEPENDENCIES(noise_estimate NIFTI)
+  ENDIF()
+ENDIF()
+
