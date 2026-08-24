@@ -60,11 +60,20 @@ IF(NOT MINC_TOOLKIT_BUILD)
     build_nifti(${CMAKE_BINARY_DIR}/nlm-deps/install)
   ENDIF()
 
-  # The pure, MINC-independent volume container (minc_io_simple_volume.h et al.)
-  # lives alongside libminc's sources; use it directly when this checkout has
-  # the sibling libminc submodule, without requiring MINC to be built/found.
-  IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
-    INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
+  # The pure, MINC-independent volume container (minc_io_simple_volume.h et al.) is
+  # needed regardless of HAVE_MINC1, but only needs to be located explicitly when
+  # MINC itself isn't available -- when HAVE_MINC1 is ON, LIBMINC_USE_FILE already
+  # propagated the real include dir above.
+  IF(NOT HAVE_MINC1)
+    IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
+      # Single source of truth when this checkout has the sibling libminc submodule
+      # (the superbuild layout) -- avoid drifting from a second vendored copy.
+      INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
+    ELSE()
+      # Standalone NLM checkout with no sibling libminc at all -- use NLM's own
+      # vendored fallback copy of the same pure, MINC-independent headers.
+      INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ezminc")
+    ENDIF()
   ENDIF()
 
   ENABLE_TESTING()
