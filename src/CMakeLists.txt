@@ -17,6 +17,7 @@ TARGET_LINK_LIBRARIES( mincnlm ${EZMINC_LIBRARIES} ${GSL_LIBRARY} ${GSL_CBLAS_LI
 
 ADD_EXECUTABLE( minc_anlm
                 minc_anlm.cpp
+                anlm_proc.cpp        anlm_proc.h
                 minc_histograms.cpp minc_histograms.h
                 minc_io_nifti_volume.h )
 TARGET_LINK_LIBRARIES( minc_anlm ${EZMINC_LIBRARIES} ${NIFTI_LIBRARY} ${ZNZ_LIBRARY} ${ZLIB_LIBRARY} pthread  )
