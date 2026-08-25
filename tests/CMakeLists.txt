@@ -18,7 +18,7 @@ ADD_EXECUTABLE( test_anlm_denoise
                 test_anlm_denoise.cpp
                 test_common.h
                 ../src/anlm_proc.cpp ../src/anlm_proc.h )
-TARGET_LINK_LIBRARIES( test_anlm_denoise ${GSL_LIBRARY} pthread )
+TARGET_LINK_LIBRARIES( test_anlm_denoise ${GSL_LIBRARY} ${GSL_CBLAS_LIBRARY} pthread )
 ADD_TEST( anlm_denoise_psnr test_anlm_denoise )
 
 ADD_EXECUTABLE( test_noise_estimate
