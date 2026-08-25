@@ -51,12 +51,12 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
 #include <minc_1_simple.h> // simple minc reading & writing
 #include <time_stamp.h>    // for creating minc style history entry
 #include <minc_1_simple_rw.h>
 #include <ParseArgv.h>
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
 #include "minc_io_nifti_volume.h" // direct NIfTI reading & writing, no MINC dependency
 #include "noise_estimate.h"
 
@@ -91,7 +91,7 @@ int debug      = 0;
 int references = 0;
 char *hallucinate_file = NULL;
 
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
 static ArgvInfo argTable[] =
 {
 	{NULL, ARGV_HELP, NULL, NULL,(char*)"###########################################################################"},
@@ -158,7 +158,7 @@ void show_usage(const char *name)
       << "\t-references    Print citation references.\n"
       << "\t-help          Print this usage message.\n";
 }
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
 
 void print_references(void)
 {
@@ -402,9 +402,9 @@ int main(int argc, char *argv[])
 	int vol_size[3] = {0, 0, 0}; /* size */
 	double vol_res[3] = {0.0, 0.0, 0.0};  /* resolutions */
   
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
 	char *history = time_stamp(argc, argv); //maybe we should free it afterwards
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
 
   std::cout<<"\
 ###########################################################################\n\
@@ -422,7 +422,7 @@ The original implementation was protected under the licence: \n\
 IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
   
 	/* get args */
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
 	if(ParseArgv(&argc, argv, argTable, 0) || (argc < 2))
 	{
 		fprintf(stderr,"\nUsage: %s [<options>] <infile.mnc> <outfile.mnc>\n", argv[0]);
@@ -494,7 +494,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     argv[1] = argv[optind];
     argv[2] = argv[optind+1];
   }
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
 
   if(references) print_references();
 
@@ -520,9 +520,9 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     return EXIT_FAILURE;
   }
 
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
   minc::minc_1_reader minc_reader;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
   nifti_image* nifti_header = NULL;
 
 	try {
@@ -537,7 +537,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     }
     else
     {
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
       minc_reader.open(in_file);
 
       if((in_ndims=minc_reader.dim_no()) != 3){
@@ -557,7 +557,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
       fprintf(stderr, "%s: this build has no MINC support; only .nii/.nii.gz files"
                        " are supported. Rebuild with MINC available to use .mnc files.\n", argv[0]);
       return EXIT_FAILURE;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
     }
 
     out_vol_float = new float[vol_size[0]*vol_size[1]*vol_size[2]];
@@ -581,7 +581,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
       }
       else
       {
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
         minc::minc_1_reader h_reader;
         h_reader.open(hallucinate_file);
         for(int i=1;i<4;i++)
@@ -597,7 +597,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
         fprintf(stderr, "%s: this build has no MINC support; only .nii/.nii.gz files"
                          " are supported. Rebuild with MINC available to use .mnc files.\n", argv[0]);
         return EXIT_FAILURE;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
       }
     }
 
@@ -699,7 +699,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     }
     else
     {
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
       minc::minc_1_writer minc_writer;
       minc_writer.open(out_file,minc_reader.info(),2,minc_reader.datatype());
       minc_writer.copy_headers(minc_reader);
@@ -711,7 +711,7 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
       fprintf(stderr, "%s: this build has no MINC support; only .nii/.nii.gz files"
                        " are supported. Rebuild with MINC available to use .mnc files.\n", argv[0]);
       return EXIT_FAILURE;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
     }
 
 		//delete [] in_vol_float;

@@ -1,6 +1,3 @@
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif //HAVE_CONFIG_H
 
 #include <iostream>
 #include <cstdlib>
@@ -12,11 +9,11 @@
 
 #include <getopt.h>
 #include <minc_io_simple_volume.h>
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
 #include <minc_1_simple.h>
 #include <minc_1_simple_rw.h>
 #include <time_stamp.h>    // for creating minc style history entry
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
 #include "minc_io_nifti_volume.h" // direct NIfTI reading & writing, no MINC dependency
 #include "minc_histograms.h"
 #include "anlm_proc.h"
@@ -62,9 +59,9 @@ int main(int argc,char **argv)
   int threads=1;
   double beta=1.0;
   
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
   char *history = time_stamp(argc, argv); //maybe we should free it afterwards
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
   
   static struct option long_options[] =
   {
@@ -168,10 +165,10 @@ int main(int argc,char **argv)
   {
     simple_volume<double> src;
 
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC  
     minc_1_reader rdr1;
     nc_type store_datatype = NC_FLOAT;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
     nifti_image* nifti_header = NULL;
     int nifti_store_datatype = 0; // 0 = keep same datatype as input
 
@@ -183,7 +180,7 @@ int main(int argc,char **argv)
     }
     else
     {
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
       rdr1.open(input_src_f.c_str());
       load_simple_volume<double>(rdr1,src);
       store_datatype= store_double?NC_DOUBLE:store_float?NC_FLOAT:store_short?NC_SHORT:store_byte?NC_BYTE:rdr1.datatype();
@@ -191,7 +188,7 @@ int main(int argc,char **argv)
       std::cerr << "this build has no MINC support; only .nii/.nii.gz files are"
                     " supported. Rebuild with MINC available to use .mnc files." << std::endl;
       return 1;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
     }
 
     if(debug)
@@ -208,7 +205,7 @@ int main(int argc,char **argv)
     }
     else
     {
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
       minc_1_writer wrt;
       wrt.open(output_f.c_str(),rdr1.info(),2,store_datatype);
       wrt.append_history(history);
@@ -217,7 +214,7 @@ int main(int argc,char **argv)
       std::cerr << "this build has no MINC support; only .nii/.nii.gz files are"
                     " supported. Rebuild with MINC available to use .mnc files." << std::endl;
       return 1;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
     }
 
     if(debug)
@@ -231,7 +228,7 @@ int main(int argc,char **argv)
       }
       else
       {
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
         minc_1_writer wrt2;
         wrt2.open(output_distance.c_str(),rdr1.info(),2,store_datatype);
         wrt2.append_history(history);
@@ -246,7 +243,7 @@ int main(int argc,char **argv)
         std::cerr << "this build has no MINC support; only .nii/.nii.gz files are"
                       " supported. Rebuild with MINC available to use .mnc files." << std::endl;
         return 1;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
       }
     }
 

@@ -1,10 +1,10 @@
 #include <iostream>
 #include <getopt.h>
 #include <minc_io_simple_volume.h>
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
 #include <minc_1_simple.h>
 #include <minc_1_simple_rw.h>
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
 #include "minc_io_nifti_volume.h" // direct NIfTI reading & writing, no MINC dependency
 #include <stdlib.h>
 #include "noise_estimate.h"
@@ -139,7 +139,7 @@ int main(int argc,char **argv)
     }
     else
     {
-#ifdef HAVE_MINC1
+#ifdef NLM_HAVE_MINC
       minc_1_reader rdr;
       rdr.open(input_f.c_str());
       load_simple_volume<float>(rdr,input);
@@ -178,7 +178,7 @@ int main(int argc,char **argv)
       std::cerr << "this build has no MINC support; only .nii/.nii.gz files are"
                     " supported. Rebuild with MINC available to use .mnc files." << std::endl;
       return 1;
-#endif //HAVE_MINC1
+#endif //NLM_HAVE_MINC
     }
 
     double mean_signal=0.0;

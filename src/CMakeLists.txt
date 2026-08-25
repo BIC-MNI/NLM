@@ -1,6 +1,6 @@
-IF(HAVE_MINC1)
-  ADD_DEFINITIONS(-DHAVE_MINC1)
-ENDIF(HAVE_MINC1)
+IF(NLM_HAVE_MINC)
+  ADD_DEFINITIONS(-DNLM_HAVE_MINC)
+ENDIF(NLM_HAVE_MINC)
 
 ADD_EXECUTABLE( mincnlm
                 mincnlm.cpp
@@ -18,9 +18,9 @@ ADD_EXECUTABLE( mincnlm
                 minc_io_nifti_volume.h )
 
 TARGET_LINK_LIBRARIES( mincnlm ${GSL_LIBRARY} ${GSL_CBLAS_LIBRARY} ${FFTW3F_LIBRARY} ${NIFTI_LIBRARY} ${ZNZ_LIBRARY} ${ZLIB_LIBRARY} pthread  )
-IF(HAVE_MINC1)
+IF(NLM_HAVE_MINC)
   TARGET_LINK_LIBRARIES( mincnlm ${EZMINC_LIBRARIES} )
-ENDIF(HAVE_MINC1)
+ENDIF(NLM_HAVE_MINC)
 
 ADD_EXECUTABLE( minc_anlm
                 minc_anlm.cpp
@@ -28,9 +28,9 @@ ADD_EXECUTABLE( minc_anlm
                 minc_histograms.cpp minc_histograms.h
                 minc_io_nifti_volume.h )
 TARGET_LINK_LIBRARIES( minc_anlm ${NIFTI_LIBRARY} ${ZNZ_LIBRARY} ${ZLIB_LIBRARY} pthread  )
-IF(HAVE_MINC1)
+IF(NLM_HAVE_MINC)
   TARGET_LINK_LIBRARIES( minc_anlm ${EZMINC_LIBRARIES} )
-ENDIF(HAVE_MINC1)
+ENDIF(NLM_HAVE_MINC)
 
 ADD_EXECUTABLE( noise_estimate
                 noise_estimate_tool.cpp
@@ -41,9 +41,9 @@ ADD_EXECUTABLE( noise_estimate
                 dwt_utils.cpp        dwt_utils.h  volume_dwt.h
                 minc_io_nifti_volume.h )
 TARGET_LINK_LIBRARIES( noise_estimate ${GSL_LIBRARY} ${GSL_CBLAS_LIBRARY} ${FFTW3F_LIBRARY} ${NIFTI_LIBRARY} ${ZNZ_LIBRARY} ${ZLIB_LIBRARY} )
-IF(HAVE_MINC1)
+IF(NLM_HAVE_MINC)
   TARGET_LINK_LIBRARIES( noise_estimate ${EZMINC_LIBRARIES} )
-ENDIF(HAVE_MINC1)
+ENDIF(NLM_HAVE_MINC)
 
 INSTALL(TARGETS
         mincnlm minc_anlm noise_estimate

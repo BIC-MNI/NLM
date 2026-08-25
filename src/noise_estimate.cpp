@@ -21,12 +21,7 @@
 #include <iostream>
 #include <getopt.h>
 #include <minc_io_simple_volume.h>
-#ifdef HAVE_MINC1
-#include <minc_1_simple.h>
-#include <minc_1_simple_rw.h>
-#endif //HAVE_MINC1
 #include "minc_histograms.h"
-//#include "pca_utils.h"
 #include "fftw_blur.h"
 #include "dwt_utils.h"
 #include "noise_estimate.h"

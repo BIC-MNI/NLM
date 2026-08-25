@@ -16,9 +16,9 @@ IF(NOT MINC_TOOLKIT_BUILD)
 
   IF(LIBMINC_FOUND AND NLM_USE_MINC)
     INCLUDE( ${LIBMINC_USE_FILE} )
-    SET(HAVE_MINC1 ON)
+    SET(NLM_HAVE_MINC  ON)
   ELSE()
-    SET(HAVE_MINC1 OFF)
+    SET(NLM_HAVE_MINC OFF)
     MESSAGE(STATUS "NLM: building NIfTI-only (MINC not found or disabled via NLM_USE_MINC=OFF)")
   ENDIF()
 
@@ -61,10 +61,10 @@ IF(NOT MINC_TOOLKIT_BUILD)
   ENDIF()
 
   # The pure, MINC-independent volume container (minc_io_simple_volume.h et al.) is
-  # needed regardless of HAVE_MINC1, but only needs to be located explicitly when
-  # MINC itself isn't available -- when HAVE_MINC1 is ON, LIBMINC_USE_FILE already
+  # needed regardless of HAVE_MINC, but only needs to be located explicitly when
+  # MINC itself isn't available -- when HAVE_MINC is ON, LIBMINC_USE_FILE already
   # propagated the real include dir above.
-  IF(NOT HAVE_MINC1)
+  IF(NOT HAVE_MINC)
     IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
       # Single source of truth when this checkout has the sibling libminc submodule
       # (the superbuild layout) -- avoid drifting from a second vendored copy.
@@ -78,6 +78,9 @@ IF(NOT MINC_TOOLKIT_BUILD)
 
   ENABLE_TESTING()
   INCLUDE(CTest)
+ELSE(NOT MINC_TOOLKIT_BUILD)
+  # part of the superbuild
+
 ENDIF(NOT MINC_TOOLKIT_BUILD)
 
 INCLUDE_DIRECTORIES( ${GSL_INCLUDE_DIR} ${FFTW3F_INCLUDE_DIRS} ${NIFTI_INCLUDE_DIR} ${ZNZ_INCLUDE_DIR} )
