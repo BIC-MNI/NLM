@@ -2,8 +2,13 @@
 #include "nl_means.h"
 #include "nl_means_block.h"
 
-extern int      verbose;
-extern int      debug;
+#include "nlm_globals.h"
+
+// The progress chatter below is written unqualified.  This used to come from a
+// `using namespace std;` in nl_means_block.h, which imposed it on every
+// consumer of the header; keep it here, where it is a translation unit's own
+// business.
+using namespace std;
 
 // Function which compute the weighted average for one block
 void Average_block ( float *ima_in,int x,int y,int z,int *neighborhoodsize,float *average, float weight, int* vol_size )

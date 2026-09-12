@@ -60,22 +60,6 @@ IF(NOT MINC_TOOLKIT_BUILD)
     build_nifti(${CMAKE_BINARY_DIR}/nlm-deps/install)
   ENDIF()
 
-  # The pure, MINC-independent volume container (minc_io_simple_volume.h et al.) is
-  # needed regardless of HAVE_MINC, but only needs to be located explicitly when
-  # MINC itself isn't available -- when HAVE_MINC is ON, LIBMINC_USE_FILE already
-  # propagated the real include dir above.
-  IF(NOT HAVE_MINC)
-    IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
-      # Single source of truth when this checkout has the sibling libminc submodule
-      # (the superbuild layout) -- avoid drifting from a second vendored copy.
-      INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
-    ELSE()
-      # Standalone NLM checkout with no sibling libminc at all -- use NLM's own
-      # vendored fallback copy of the same pure, MINC-independent headers.
-      INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ezminc")
-    ENDIF()
-  ENDIF()
-
   ENABLE_TESTING()
   INCLUDE(CTest)
 ELSE(NOT MINC_TOOLKIT_BUILD)
@@ -83,7 +67,22 @@ ELSE(NOT MINC_TOOLKIT_BUILD)
 
 ENDIF(NOT MINC_TOOLKIT_BUILD)
 
-INCLUDE_DIRECTORIES( ${GSL_INCLUDE_DIR} ${FFTW3F_INCLUDE_DIRS} ${NIFTI_INCLUDE_DIR} ${ZNZ_INCLUDE_DIR} )
+# The pure, MINC-independent volume container (minc_io_simple_volume.h et al.) is
+# needed regardless of NLM_HAVE_MINC -- the algorithm sources use it and nothing else
+# from ezminc.  When MINC is available LIBMINC_USE_FILE (or the superbuild) has already
+# put the real directory on the include path, but the `nlm` library has to name it
+# explicitly anyway so it can hand it to its consumers as a usage requirement.
+IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
+  # Single source of truth when this checkout has the sibling libminc submodule
+  # (the superbuild layout) -- avoid drifting from a second vendored copy.
+  SET(NLM_EZMINC_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libminc/ezminc")
+ELSE()
+  # Standalone NLM checkout with no sibling libminc at all -- use NLM's own
+  # vendored fallback copy of the same pure, MINC-independent headers.
+  SET(NLM_EZMINC_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ezminc")
+ENDIF()
+
+INCLUDE_DIRECTORIES( ${NLM_EZMINC_INCLUDE_DIR} ${GSL_INCLUDE_DIR} ${FFTW3F_INCLUDE_DIRS} ${NIFTI_INCLUDE_DIR} ${ZNZ_INCLUDE_DIR} )
 
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(tests)

@@ -4,8 +4,6 @@
 #include "nl_means.h"
 #include "nl_means_utils.h"
 
-using namespace std;
-
 // Structur used for multithreading programming
 struct nl_mean_block_mt {
   volatile float *Estimate;

@@ -44,6 +44,7 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <stdexcept>
 
 #include <math.h>
 #include <float.h>
@@ -62,10 +63,10 @@
 
 #include "nl_means_utils.h"
 #include "nl_means_block.h"
+#include "nlm_denoise.h"
 
 using namespace std;
 
-int      verbose = 0;
 int      clobber = 0;
 
 double filtering_param   = 0;
@@ -75,19 +76,12 @@ int anisotropic  = 0;
 double S       = 1;
 double M       = 5;
 
-int neighborhoodsize[3]; // size of the patches
-int searching[3];        // size of the search area
-int testmean   = 1;
-int testvar    = 1;
-int nb_thread = 4;
 double m_min   = 0.95; //threshold for mean test
 
 double v_min   = 0.5; //threshold for var test
 
 int weight_method = 0;
-int block      = 1;
 int b_space    = 2;
-int debug      = 0;
 int references = 0;
 char *hallucinate_file = NULL;
 
@@ -201,189 +195,28 @@ void print_references(void)
 // Function to perform preprocessing and call the denoising function
 void Exec(minc::simple_volume<float> & in, float *ima_out, int* vol_size, double * vol_res, float *hallucinate_in)
 {
-  float *ima_in=in.c_buf();
+  // Everything this function used to do inline now lives in nlm::denoise
+  // (nlm_denoise.cpp), so the library and this CLI run the identical pipeline.
+  nlm::denoise_params p;
 
-	if(vol_size[2] < 2*nb_thread)
-	{
-		std::cout << "\n------------------------------------------------" << std::endl;
-		std::cout << "!The number of slices is too small (<nb_thread)!" << std::endl;
-		std::cout << "!!    => Set voxelwise mode (block = 0)       !!" << std::endl;
-		std::cout << "------------------------------------------------"<< std::endl;
-		block =0;
-	}
+  p.sigma         = filtering_param;
+  p.beta          = beta;
+  p.patch_radius  = S;
+  p.search_radius = M;
+  p.weight_method = weight_method;
+  p.block         = (block != 0);
+  p.b_space       = b_space;
+  p.test_mean     = (testmean != 0);
+  p.test_var      = (testvar != 0);
+  p.m_min         = m_min;
+  p.v_min         = v_min;
+  p.anisotropic   = (anisotropic != 0);
+  p.threads       = nb_thread;
+  p.verbose       = verbose;
+  p.debug         = debug;
 
-	if (anisotropic == 0)
-	{
-		neighborhoodsize[0] = (int) S;
-		neighborhoodsize[1] = (int) S;
-		neighborhoodsize[2] = (int) S;
-		searching[0] = (int) M;
-		searching[1] = (int) M;
-		searching[2] = (int) M;
-	}
-	else
-	{
-    if(verbose) {
-      std::cout << "\n------------------------------------------------" << std::endl;
-      std::cout << "                 Anisotropy mode                 " << std::endl;
-      std::cout << "------------------------------------------------" << std::endl;
-      std::cout << " The neighborhood size is adapted to the anisotropy of the image" << std::endl;
-    }
-    
-    // set default parameters
-    neighborhoodsize[0] = (int) S;  //2
-    neighborhoodsize[1] = (int) S;  //2
-    neighborhoodsize[2] = (int) S;  //2
-    searching[0] = (int) M;    //7
-    searching[1] = (int) M;    //7
-    searching[2] = (int) M;   //7
-
-    std::cout<<" -- Neighborhoodsize: "<<neighborhoodsize[0]<<","<<neighborhoodsize[1]<<","<<neighborhoodsize[2]<<std::endl;
-    std::cout<<" -- Searching: "<<searching[0]<<","<<searching[1]<<","<<searching[2]<<std::endl;
-    
-    //check 2D dimension
-    if (vol_res[0]>vol_res[1] && vol_res[0]>vol_res[2])
-    {
-      neighborhoodsize[0] = (int) 0;
-      searching[0] = (int) 1;
-    }
-    else if (vol_res[1]>vol_res[2] && vol_res[1]>vol_res[0])
-    {
-      neighborhoodsize[1] = (int) 0;
-      searching[1] = (int) 1;
-    }
-    else if (vol_res[2]>vol_res[1] && vol_res[2]>vol_res[0])
-    {
-      neighborhoodsize[2] = (int)0;
-      searching[2] = (int) 1;
-    }
-
-    std::cout<<" -- Resolution: "<<vol_res[0]<<","<<vol_res[1]<<","<<vol_res[2]<<std::endl;
-    std::cout<<" -- Neighborhoodsize: "<<neighborhoodsize[0]<<","<<neighborhoodsize[1]<<","<<neighborhoodsize[2]<<std::endl;
-    std::cout<<" -- Searching: "<<searching[0]<<","<<searching[1]<<","<<searching[2]<<std::endl;
-  }
-  
-  if(verbose) {
-    std::cout <<"\n--------------------------------------------------"<< std::endl;
-    std::cout <<    "                   Parameters                     " << std::endl;
-    std::cout <<"--------------------------------------------------\n"<< std::endl;
-   
-    std::cout <<      "Sigma           : ";
-    if (filtering_param == 0)
-      std::cout << "Automatic: only Rician or Gaussian noise" << std::endl;
-    else
-      std::cout << filtering_param << std::endl;
-    if (beta!=1.0)
-      std::cout << "Weighting parameter " << beta << std::endl;
-      
-    std::cout <<      "Ni              : " << 2*neighborhoodsize[0]+1 << " x " << 2*neighborhoodsize[1]+1 << " x " << 2*neighborhoodsize[2]+1 << std::endl;
-    std::cout <<      "Vi              : " << 2*searching[0]+1 << " x " << 2*searching[1]+1 << " x " << 2*searching[2]+1 << std::endl;
-      
-    if (testmean)
-      std::cout <<    "Mean Test       : Yes, " << m_min << " < X < " << 1/m_min << std::endl;
-    else
-      std::cout << "Mean Test       : No" << std::endl;
-      
-    if (testvar)
-      std::cout <<    "Variance Test   : Yes, " << v_min << " < X < " << 1/ v_min << std::endl;
-    else
-      std::cout << "Variance Test   : No" << std::endl;
-      
-    std::cout << std::endl;
-      
-    if (anisotropic == 1)
-      std::cout <<  "Anisotropic mode activated       : Yes" << std::endl;
-    else
-      std::cout <<  "Anisotropic mode activated       : No" << std::endl;
-  } 
-  
-	if (block == 1)
-	{
-    if(verbose) {
-      std::cout << "Block Implementaiton of NL-means : Yes" << std::endl;
-      std::cout << "--> Distance between blocks      : " << b_space << std::endl;
-    }
-		if (neighborhoodsize[0] <(b_space/2))
-		{
-			std::cout << "We must have Ni < (D_block)/2" << std::endl;
-			exit(0);
-		}
-    
-		if (anisotropic == 1)
-		{
-			std::cout << "Can't activate isotropic mode in block version" << std::endl;
-			exit(0);
-		}
-    
-	}
-  
-  if(verbose) {
-    if (block == 0)
-      std::cout << "Block Implementation of NL-means : No " << std::endl;
-    if (weight_method == 0)
-      std::cout << "Weighting Method                 : L2-norm (Gaussian noise) " << std::endl;
-    if (weight_method == 1)
-      std::cout << "Weighting Method                 : Pearson Divergence (Speckle)" << std::endl;
-    if (weight_method == 2)
-      std::cout << "Weighting Method                 : L2-norm + Bais correction (Rician noise) " << std::endl;
-    
-    std::cout<< "\n" << std::endl;
-  }
-  
-	/* local and local variance storage */
-	float *mean_map, *var_map;
-	mean_map = new float[vol_size[0]*vol_size[1]*vol_size[2]];
-	var_map = new float[vol_size[0]*vol_size[1]*vol_size[2]];
-	for (int i = 0; i < vol_size[0] *  vol_size[1] * vol_size[2]; i++)
-	{
-		mean_map[i] = 0.0;
-		var_map[i] = 0.0;
-	}
-
-  if(verbose) {
-    std::cout <<"\n--------------------------------------------------"<< std::endl;
-    std::cout <<    "                  Preprocessing                      " << std::endl;
-    std::cout <<"--------------------------------------------------\n"<< std::endl;
-  }
-  
-   // Computation of the local means
-	Preprocessing(ima_in,mean_map,neighborhoodsize,vol_size);
-    
-	if (testvar == 1)
-      // Computation of the local variances
-		Preprocessing2(ima_in,mean_map,var_map,neighborhoodsize,vol_size);
-  
-	if (filtering_param == 0)
-	{
-    
-    if(weight_method ==1)
-    {
-      std::cout <<" - ERROR: automatic variance estimation is not available for Spekle Noise:  option '-w 1'"<<std::endl
-                <<"          Use option -sigma"<<std::endl;
-      return;
-    }
-    double mean_val=0.0;
-    filtering_param=minc::noise_estimate(in,mean_val,weight_method==0,verbose);//use gaussian estimate appropriately
-	} 
-
-  if(verbose) {  
-    std::cout <<"\n--------------------------------------------------"<< std::endl;
-    std::cout <<    "                  Denoising                      " << std::endl;
-    std::cout <<"--------------------------------------------------\n"<< std::endl;
-  }
-  
-	if (block==0)   
-		denoise_mt(ima_in,ima_out,mean_map,var_map, filtering_param,beta,
-        neighborhoodsize,searching,
-        testmean,testvar,m_min,v_min,weight_method,vol_size,hallucinate_in);
-  
-	if (block==1)  
-		denoise_block_mt(ima_in,ima_out,mean_map,var_map,filtering_param,beta,
-        neighborhoodsize,searching,
-        testmean,testvar,m_min,v_min,weight_method,b_space,vol_size,hallucinate_in);
-
-	delete [] mean_map;
-	delete [] var_map;
+  filtering_param = nlm::denoise(in.c_buf(), ima_out, vol_size, vol_res, p,
+                                 hallucinate_in);
 }
 
 
@@ -674,7 +507,13 @@ IDDN.FR.001.070033.000.S.P.2007.000.21000\n\n";
     
     
     // Excecusion of the program
-		Exec(in_vol, out_vol_float, vol_size, vol_res, in_hallucinate);
+		try {
+			Exec(in_vol, out_vol_float, vol_size, vol_res, in_hallucinate);
+		} catch(const std::runtime_error &err) {
+			// Previously exit(0) -- a fatal misconfiguration reported as success.
+			std::cerr << err.what() << std::endl;
+			return EXIT_FAILURE;
+		}
 
 		if (weight_method != 2)
 		{

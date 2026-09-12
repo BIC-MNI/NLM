@@ -1,7 +1,6 @@
 #include "nl_means_utils.h"
 
-extern int      verbose;
-extern int      debug;
+#include "nlm_globals.h"
 
 float FindMinVolume(float *ima_in, int *vol_size)
 {

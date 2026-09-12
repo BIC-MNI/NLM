@@ -14,6 +14,9 @@
               express or implied warranty.
 ---------------------------------------------------------------------------- */
 
+#ifndef __DWT_UTILS_H__
+#define __DWT_UTILS_H__
+
 #include <minc_io_simple_volume.h>
 #include <minc_io_fixed_vector.h>
 #include <vector>
@@ -66,3 +69,5 @@ namespace minc
   void dwt_backward(const std::vector<simple_volume<float> > &src,simple_volume<float> &dst);
   
 };
+
+#endif //__DWT_UTILS_H__

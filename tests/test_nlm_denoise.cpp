@@ -8,16 +8,18 @@
 #include <cstdio>
 #include <vector>
 
-// globals required by nl_means.cpp / nl_means_utils.cpp
-int verbose   = 0;
-int debug     = 0;
-int nb_thread = 4;
-int testmean  = 1;
-int testvar   = 1;
-int block     = 0;
-
 int main()
 {
+  // nlm_globals.cpp owns these now; this test only overrides them.  block=0
+  // selects the voxel-wise path that Variance_Estimation_1 branches on
+  // (nl_means_utils.cpp:258) and that denoise_mt below implements.
+  verbose   = 0;
+  debug     = 0;
+  nb_thread = 4;
+  testmean  = 1;
+  testvar   = 1;
+  block     = 0;
+
   const int nx = 32, ny = 32, nz = 32;
   const size_t n = (size_t)nx * ny * nz;
   const double peak  = 1000.0;

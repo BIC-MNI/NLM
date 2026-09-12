@@ -13,7 +13,7 @@
 #define MIN( x, y )  ( ((x) <= (y)) ? (x) : (y) )
 #endif
 
-extern int testmean,testvar, nb_thread, block;
+#include "nlm_globals.h"
 
 // Structure used for multithreading programming
 struct nl_mean_mt {

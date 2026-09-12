@@ -1,7 +1,6 @@
 #include "nl_means.h"
 
-extern int      verbose;
-extern int      debug;
+#include "nlm_globals.h"
 
 //Computation of the L2 norm between 2 neighborhoods
  float L2_norm(float *V1, float *V2, int *neighborhoodsize)

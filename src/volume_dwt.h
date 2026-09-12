@@ -7,6 +7,9 @@
  *
  */
 
+#ifndef __VOLUME_DWT_H__
+#define __VOLUME_DWT_H__
+
 #include <minc_io_simple_volume.h>
 
 namespace minc
@@ -30,3 +33,5 @@ namespace minc
 	void volume_dwt(simple_volume<float>& vol,bool forward,void (*wtstep)(float [], int, int, int, wavefilt)=pwt); 
 
 };
+
+#endif //__VOLUME_DWT_H__
