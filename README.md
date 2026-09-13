@@ -392,6 +392,12 @@ so that the `nlm` target exists when N3 links it. Follow the
 [toolkit build instructions](../README.md#build-from-source); the three programs
 land in `<prefix>/bin`.
 
+MINC support is not optional there. The superbuild always builds libminc with
+ezminc and hands this directory the in-tree `minc_io`/`minc2` targets, so
+`NLM_HAVE_MINC` is always set and the installed programs always read and write
+`.mnc`; if libminc were ever missing the configure fails rather than quietly
+building NIfTI-only.
+
 ### Standalone
 
 ```sh
@@ -415,10 +421,10 @@ access at build time; point it at installed copies instead with:
 | `NLM_USE_SYSTEM_FFTW3F` | `OFF` | Use an installed single-precision FFTW3. |
 | `NLM_USE_SYSTEM_NIFTI` | `OFF` | Use an installed nifticlib. |
 
-MINC support is optional. Without libminc — `NLM_USE_MINC=OFF`, or simply no
-libminc to find — the programs are built NIfTI-only and say so when handed a
-`.mnc` file; everything else, the library included, is unaffected. To build
-against an installed libminc:
+Standalone, MINC support is optional. Without libminc — `NLM_USE_MINC=OFF`, or
+simply no libminc to find — the programs are built NIfTI-only and say so when
+handed a `.mnc` file; everything else, the library included, is unaffected. To
+build against an installed libminc:
 
 ```sh
 cmake .. -DCMAKE_BUILD_TYPE=Release \
@@ -434,20 +440,21 @@ drift apart.
 
 ## Tests
 
-Three CTest tests, each an in-process unit test on a deterministic synthetic
-phantom — no CLI parsing, no file I/O, no reference files. They link the `nlm`
-library rather than recompiling the sources, so they exercise exactly the
-objects a consumer gets.
+Four CTest tests on deterministic synthetic phantoms — no reference files. The
+first three are in-process unit tests with no CLI parsing and no file I/O; they
+link the `nlm` library rather than recompiling the sources, so they exercise
+exactly the objects a consumer gets.
 
 | Test | What it checks |
 | --- | --- |
 | `nlm_denoise_psnr` | `denoise_mt` on a phantom with added Gaussian noise gains at least 3 dB PSNR and reaches 28 dB. |
 | `anlm_denoise_psnr` | The same bar for `anlm_proc`. |
 | `noise_estimate_sigma` | `minc::noise_estimate` recovers a known sigma to within 10%. |
+| `nlm_minc_cli` | End to end: writes a phantom to a `.mnc`, runs the `mincnlm` binary on it, and checks that the dimensions and steps survived and that the PSNR cleared the same bar. Only test that runs a program or touches files; built only when `NLM_HAVE_MINC`, so it is absent from a NIfTI-only build. |
 
 ```sh
 cd build && ctest                      # standalone
-ctest -R "nlm_denoise_psnr|anlm_denoise_psnr|noise_estimate_sigma"
+ctest -R "nlm_denoise_psnr|anlm_denoise_psnr|noise_estimate_sigma|nlm_minc_cli"
 ```
 
 ## Source layout
@@ -471,7 +478,7 @@ src/
   fftw_blur.{h,cpp}     FFTW3F blurring and gradients
   dwt.cpp, dwt_utils.*, volume_dwt.h   3D wavelet transform
   minc_io_nifti_volume.h    NIfTI I/O for simple_volume<T>, no libminc
-tests/                  the three CTest unit tests
+tests/                  the CTest tests (test_minc_cli.cpp runs the mincnlm binary)
 thirdparty/ezminc/      vendored fallback copies of the pure ezminc headers
 ```
 
@@ -479,14 +486,6 @@ thirdparty/ezminc/      vendored fallback copies of the pure ezminc headers
 
 Behavioural limits, in decreasing order of how likely they are to bite:
 
-- **The programs built inside minc-toolkit-v2 have no MINC support.**
-  `NLM_HAVE_MINC` is only set in this project's standalone branch
-  (`CMakeLists.txt`), never by the superbuild, so `-DNLM_HAVE_MINC` is not
-  defined there and the installed `mincnlm`, `minc_anlm` and `noise_estimate`
-  reject `.mnc` input with *"this build has no MINC support"*. The `nlm` library
-  and the tests are unaffected. Confirmed on a superbuild-configured build tree:
-  `mincnlm -help` there advertises only `<infile.nii[.gz]>`, and the compile
-  flags carry no `-DNLM_HAVE_MINC`.
 - **`minc_anlm --mt <n>` with `n > 1` changes the result.** Its own usage text
   says so. Use one thread when reproducibility matters.
 - **Automatic noise estimation pads to a cube of the next power of two.**

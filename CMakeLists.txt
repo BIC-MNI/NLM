@@ -63,8 +63,20 @@ IF(NOT MINC_TOOLKIT_BUILD)
   ENABLE_TESTING()
   INCLUDE(CTest)
 ELSE(NOT MINC_TOOLKIT_BUILD)
-  # part of the superbuild
-
+  # Part of the superbuild.  libminc is always built there, always with ezminc
+  # (LIBMINC_BUILD_EZMINC), and the parent has already included LIBMINCConfig.cmake
+  # and UseLIBMINC.cmake -- so libminc/volume_io/Include (ParseArgv.h, time_stamp.h)
+  # and libminc/ezminc (minc_1_simple.h, minc_1_simple_rw.h) are on the include path
+  # -- and it has set EZMINC_LIBRARIES to the in-tree minc_io/minc2 targets, which
+  # carry their own include directories and build ordering.  MINC I/O is therefore
+  # not optional here: the tools this build installs must accept .mnc.
+  IF(NOT EZMINC_LIBRARIES)
+    MESSAGE(FATAL_ERROR
+      "NLM: MINC_TOOLKIT_BUILD is set but EZMINC_LIBRARIES is empty -- NLM has to be "
+      "added after ADD_SUBDIRECTORY(libminc) and the LIBMINCConfig/UseLIBMINC includes. "
+      "Refusing to silently build the tools NIfTI-only.")
+  ENDIF()
+  SET(NLM_HAVE_MINC ON)
 ENDIF(NOT MINC_TOOLKIT_BUILD)
 
 # The pure, MINC-independent volume container (minc_io_simple_volume.h et al.) is

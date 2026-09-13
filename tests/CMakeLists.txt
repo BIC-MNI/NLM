@@ -20,3 +20,12 @@ ADD_TEST( anlm_denoise_psnr test_anlm_denoise )
 ADD_EXECUTABLE( test_noise_estimate test_noise_estimate.cpp test_common.h )
 TARGET_LINK_LIBRARIES( test_noise_estimate nlm )
 ADD_TEST( noise_estimate_sigma test_noise_estimate )
+
+# The one test that runs a program and touches files: the MINC readers/writers in
+# the CLI drivers are compiled only under NLM_HAVE_MINC, so a build that loses
+# that define still passes everything above.  Skipped in a NIfTI-only build.
+IF(NLM_HAVE_MINC)
+  ADD_EXECUTABLE( test_minc_cli test_minc_cli.cpp test_common.h )
+  TARGET_LINK_LIBRARIES( test_minc_cli nlm ${EZMINC_LIBRARIES} )
+  ADD_TEST( NAME nlm_minc_cli COMMAND test_minc_cli $<TARGET_FILE:mincnlm> )
+ENDIF(NLM_HAVE_MINC)
